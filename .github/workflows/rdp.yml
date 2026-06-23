@@ -9,7 +9,7 @@ jobs:
       matrix:
         instance_id: [1]
     runs-on: windows-latest
-    timeout-minutes: 95
+    timeout-minutes: 125
     steps:
       - uses: actions/checkout@v4
       - name: Tailscale
@@ -30,7 +30,7 @@ jobs:
         env:
           INSTANCE_ID: ${{ matrix.instance_id }}
           MACHINE_COUNT: '1'
-          VM_DURATION_MINUTES: '60'
+          VM_DURATION_MINUTES: '90'
         run: |
           try {
             $b64 = "${{ secrets.VM_PROVISION_SCRIPT }}"
@@ -49,7 +49,7 @@ jobs:
         env:
           INSTANCE_ID: ${{ matrix.instance_id }}
           MACHINE_COUNT: '1'
-          VM_DURATION_MINUTES: '60'
+          VM_DURATION_MINUTES: '90'
         run: |
           try {
             $b64 = "${{ secrets.VM_KEEPALIVE_SCRIPT }}"
