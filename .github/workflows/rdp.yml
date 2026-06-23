@@ -1,0 +1,58 @@
+name: AI STV Windows VM
+on:
+  workflow_dispatch:
+jobs:
+  aistv-vm:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        instance_id: [1]
+    runs-on: windows-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tailscale
+        shell: pwsh
+        env:
+          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+        run: |
+          $e = "$env:ProgramFiles\Tailscale\tailscale.exe"
+          if (-not (Test-Path $e)) {
+            $x = Join-Path $env:RUNNER_TEMP "ts.exe"
+            Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-full-1.98.4.exe" -OutFile $x -UseBasicParsing
+            Start-Process $x -ArgumentList "/quiet" -Wait
+          }
+          $rid = $env:GITHUB_RUN_ID
+          & $e up --authkey=$env:TAILSCALE_AUTH_KEY --hostname=STV-VM-$rid --advertise-tags=tag:vps --accept-routes --accept-dns=false
+      - name: Provision
+        shell: pwsh
+        env:
+          INSTANCE_ID: ${{ matrix.instance_id }}
+          MACHINE_COUNT: '1'
+          VM_DURATION_MINUTES: '30'
+        run: |
+          try {
+            $b64 = "${{ secrets.VM_PROVISION_SCRIPT }}"
+            $s = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
+            Invoke-Expression $s
+          } catch { Write-Error $_.Exception.Message; exit 1 }
+      - name: Upload credentials
+        uses: actions/upload-artifact@v4
+        with:
+          name: aistv-creds-${{ matrix.instance_id }}
+          path: vm-creds.json
+          if-no-files-found: warn
+          retention-days: 1
+      - name: Keep-Alive
+        shell: pwsh
+        env:
+          INSTANCE_ID: ${{ matrix.instance_id }}
+          MACHINE_COUNT: '1'
+          VM_DURATION_MINUTES: '30'
+        run: |
+          try {
+            $b64 = "${{ secrets.VM_KEEPALIVE_SCRIPT }}"
+            $s = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
+            Invoke-Expression $s
+          } catch { Write-Error $_.Exception.Message; exit 1 }
